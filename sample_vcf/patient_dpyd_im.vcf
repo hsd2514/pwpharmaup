@@ -1,0 +1,14 @@
+##fileformat=VCFv4.2
+##fileDate=20260219
+##source=PharmaGuardAI_SampleGenerator
+##reference=GRCh38
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene symbol">
+##INFO=<ID=STAR,Number=1,Type=String,Description="Star allele designation">
+##INFO=<ID=RS,Number=1,Type=String,Description="rsID identifier">
+##INFO=<ID=FUNC,Number=1,Type=String,Description="Functional annotation">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##contig=<ID=1,length=248956422>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+1	97915614	rs3918290	C	T	100	PASS	GENE=DPYD;STAR=*2A;RS=rs3918290;FUNC=No_function	GT:DP:GQ	0/1:55:99

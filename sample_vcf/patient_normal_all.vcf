@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##fileDate=20260219
+##source=PharmaGuardAI_SampleGenerator
+##reference=GRCh38
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene symbol">
+##INFO=<ID=STAR,Number=1,Type=String,Description="Star allele designation">
+##INFO=<ID=RS,Number=1,Type=String,Description="rsID identifier">
+##INFO=<ID=FUNC,Number=1,Type=String,Description="Functional annotation">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##contig=<ID=22,length=50818468>
+##contig=<ID=10,length=133797422>
+##contig=<ID=1,length=248956422>
+##contig=<ID=12,length=133275309>
+##contig=<ID=6,length=170805979>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+22	42522613	rs16947	C	T	95	PASS	GENE=CYP2D6;STAR=*1;RS=rs16947;FUNC=Normal_function	GT:DP:GQ	0/0:40:90
+10	96541616	rs12248560	C	T	92	PASS	GENE=CYP2C19;STAR=*1;RS=rs12248560;FUNC=Normal_function	GT:DP:GQ	0/0:38:88
+10	96702047	rs1799853	C	T	90	PASS	GENE=CYP2C9;STAR=*1;RS=rs1799853;FUNC=Normal_function	GT:DP:GQ	0/0:35:85
+12	21331549	rs4149056	T	C	94	PASS	GENE=SLCO1B1;STAR=*1;RS=rs4149056;FUNC=Normal_function	GT:DP:GQ	0/0:42:92
+6	18130918	rs1142345	T	C	96	PASS	GENE=TPMT;STAR=*1;RS=rs1142345;FUNC=Normal_function	GT:DP:GQ	0/0:44:94
+1	97915614	rs3918290	C	T	98	PASS	GENE=DPYD;STAR=*1;RS=rs3918290;FUNC=Normal_function	GT:DP:GQ	0/0:48:96

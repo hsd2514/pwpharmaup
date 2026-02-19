@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+/* ============================================
+   PharmaGuard AI - Biotech Laboratory Aesthetic
+   ============================================
+   Design Direction: Futuristic clinical lab meets 
+   high-end biotech. Bioluminescent accents on deep
+   dark backgrounds. Precise, trust-inspiring, cutting-edge.
+   ============================================ */
+
+@theme {
+  /* Core color system - clinical professional palette */
+  --color-void: #f8fafc;
+  --color-abyss: #f1f5f9;
+  --color-slate: #e2e8f0;
+  --color-steel: #cbd5e1;
+  --color-ash: #94a3b8;
+  --color-mist: #64748b;
+  --color-cloud: #475569;
+  --color-light: #0f172a;
+  --color-pure: #020617;
+
+  /* Clinical accent tones */
+  --color-cyan-glow: #0f766e;
+  --color-cyan-bright: #0d9488;
+  --color-cyan-dim: #115e59;
+  --color-cyan-ghost: rgba(15, 118, 110, 0.12);
+  --color-cyan-aura: rgba(15, 118, 110, 0.05);
+  --color-accent: #0f766e;
+
+  /* Risk spectrum */
+  --color-safe: #15803d;
+  --color-safe-glow: rgba(21, 128, 61, 0.2);
+  --color-caution: #b45309;
+  --color-caution-glow: rgba(180, 83, 9, 0.22);
+  --color-danger: #b91c1c;
+  --color-danger-glow: rgba(185, 28, 28, 0.2);
+  --color-ineffective: #334155;
+  --color-ineffective-glow: rgba(51, 65, 85, 0.2);
+
+  /* Typography */
+  --font-display: "Syne", "Outfit", system-ui, sans-serif;
+  --font-body: "DM Sans", "Nunito Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  background:
+    radial-gradient(1200px 700px at -10% -20%, rgba(15, 23, 42, 0.06), transparent 60%),
+    radial-gradient(900px 520px at 110% -10%, rgba(71, 85, 105, 0.05), transparent 58%),
+    linear-gradient(165deg, #ffffff 0%, #f8fafc 40%, #f1f5f9 100%);
+  color: var(--color-light);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Molecular grid background */
+.molecular-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 55% at 12% 10%, rgba(71, 85, 105, 0.06), transparent 80%),
+    radial-gradient(40% 40% at 86% 84%, rgba(100, 116, 139, 0.05), transparent 82%);
+}
+
+.molecular-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%);
+  opacity: 0.45;
+}
+
+/* Glass panel effect */
+.glass-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Upload zone styling */
+.upload-zone {
+  position: relative;
+  border: 2px dashed rgba(15, 118, 110, 0.32);
+  border-radius: 16px;
+  background: rgba(15, 118, 110, 0.05);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+  box-shadow: 0 0 18px rgba(15, 118, 110, 0.12);
+}
+
+/* Risk badges */
+.risk-safe {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.risk-adjust {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.risk-toxic {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+.risk-ineffective {
+  background: rgba(51, 65, 85, 0.25);
+  color: #cbd5e1;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+}
+
+.risk-safe-bg {
+  background: linear-gradient(90deg, rgba(5, 150, 105, 0.12) 0%, rgba(5, 150, 105, 0.04) 100%);
+}
+
+.risk-adjust-bg {
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.12) 0%, rgba(217, 119, 6, 0.04) 100%);
+}
+
+.risk-toxic-bg {
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.04) 100%);
+}
+
+.risk-ineffective-bg {
+  background: linear-gradient(90deg, rgba(51, 65, 85, 0.22) 0%, rgba(51, 65, 85, 0.07) 100%);
+}
+
+.risk-unknown-bg {
+  background: linear-gradient(90deg, rgba(100, 116, 139, 0.2) 0%, rgba(100, 116, 139, 0.05) 100%);
+}
+
+@keyframes pulse-danger {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* Loading helix animation */
+.loading-helix {
+  width: 60px;
+  height: 60px;
+  position: relative;
+}
+
+.loading-helix::before,
+.loading-helix::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  animation: helix-rotate 1.5s ease-in-out infinite;
+}
+
+.loading-helix::before {
+  background: #00e5c7;
+  left: 0;
+}
+
+.loading-helix::after {
+  background: rgba(0, 229, 199, 0.3);
+  right: 0;
+  animation-delay: 0.75s;
+}
+
+@keyframes helix-rotate {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-20px) scale(0.8);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(20px) scale(0.8);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f14;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3a48;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 229, 199, 0.3);
+  color: #f8fafc;
+}
