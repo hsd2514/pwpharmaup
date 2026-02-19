@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ============================================
   # Backend - FastAPI Application
@@ -12,7 +10,14 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - VERTEX_PROJECT=${VERTEX_PROJECT}
+      - MEDGEMMA_ENDPOINT_ID=${MEDGEMMA_ENDPOINT_ID}
+      - MEDGEMMA_LOCATION=${MEDGEMMA_LOCATION}
+      - FUNCGEMMA_ENDPOINT_ID=${FUNCGEMMA_ENDPOINT_ID}
+      - FUNCGEMMA_LOCATION=${FUNCGEMMA_LOCATION}
+      - ENABLE_LLM_EXPLANATIONS=${ENABLE_LLM_EXPLANATIONS:-true}
+      - GOOGLE_CREDENTIALS_BASE64=${GOOGLE_CREDENTIALS_BASE64}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - DEBUG=${DEBUG:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
     volumes:
@@ -32,6 +37,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     container_name: ${FRONTEND_CONTAINER_NAME:-pharmaguard-frontend}
     ports:
       - "5173:80"

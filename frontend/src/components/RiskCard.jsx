@@ -48,6 +48,12 @@ export default function RiskCard({ result, index }) {
   const config =
     riskConfig[result.risk_assessment.risk_label] || riskConfig.Unknown;
   const Icon = config.icon;
+  const phenoconversion = result.phenoconversion_check;
+  const hasPhenoconversion = Boolean(phenoconversion?.phenoconversion_risk);
+  const phenoconversionDrivers = (phenoconversion?.caused_by || [])
+    .map((item) => item?.drug)
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div
@@ -121,9 +127,27 @@ export default function RiskCard({ result, index }) {
         <h4 className="text-xs font-bold text-cyan-glow uppercase tracking-wider mb-3">
           Clinical Recommendation
         </h4>
+        {hasPhenoconversion && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+              Phenoconversion Override Applied
+            </p>
+            <p className="mt-1 text-sm text-amber-900">
+              Genetic phenotype {phenoconversion?.genetic_phenotype} is treated as{" "}
+              {phenoconversion?.functional_phenotype}
+              {phenoconversionDrivers ? ` due to ${phenoconversionDrivers}` : ""}.
+            </p>
+          </div>
+        )}
         <p className="text-light leading-relaxed">
           {result.clinical_recommendation.action}
         </p>
+        {result.clinical_recommendation.monitoring && (
+          <p className="mt-3 text-sm text-cloud">
+            <span className="font-semibold text-light">Monitoring:</span>{" "}
+            {result.clinical_recommendation.monitoring}
+          </p>
+        )}
         {result.clinical_recommendation.alternative_drugs?.length > 0 && (
           <div className="mt-4">
             <p className="text-xs text-mist mb-2">Alternative drugs:</p>

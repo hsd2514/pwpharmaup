@@ -127,6 +127,19 @@ class LLMGeneratedExplanation(StrictModel):
     patient_summary: str = Field(..., description="Simple explanation for patient")
 
 
+class PhenoconversionCause(StrictModel):
+    drug: str
+    strength: Literal["weak", "moderate", "strong"]
+
+
+class PhenoconversionResult(StrictModel):
+    phenoconversion_risk: bool
+    genetic_phenotype: Literal["PM", "IM", "NM", "RM", "URM", "Unknown"]
+    functional_phenotype: Literal["PM", "IM", "NM", "RM", "URM", "Unknown"]
+    caused_by: List[PhenoconversionCause] = Field(default_factory=list)
+    clinical_note: str
+
+
 # =============================================================================
 # Quality Metrics Models
 # =============================================================================
@@ -139,6 +152,7 @@ class QualityMetrics(StrictModel):
     annotation_completeness: float = Field(..., ge=0.0, le=1.0)
     confidence_level: Literal["high", "medium", "low"]
     analysis_version: str = Field(default="1.0.0")
+    clinical_rules_version: Optional[str] = None
 
 
 # =============================================================================

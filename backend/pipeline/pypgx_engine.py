@@ -9,15 +9,10 @@ equivalent logic using CPIC-aligned lookup tables.
 import logging
 from typing import Dict, Optional, Tuple
 
-from models.constants import (
-    DIPLOTYPE_PHENOTYPES,
-    PHENOTYPE_ABBREVIATIONS,
-    CYP2D6_ACTIVITY_SCORES,
-    DEFAULT_PHENOTYPE,
-    TARGET_GENES,
-)
+from pipeline.rules_loader import get_rules
 
 logger = logging.getLogger(__name__)
+_RULES = get_rules()
 
 
 def call_phenotype(gene: str, diplotype: str) -> str:
@@ -32,7 +27,7 @@ def call_phenotype(gene: str, diplotype: str) -> str:
     Returns:
         Phenotype string (e.g., 'Poor Metabolizer')
     """
-    if gene not in TARGET_GENES:
+    if gene not in _RULES.target_genes:
         logger.warning(f"Gene {gene} not in target genes")
         return "Unknown"
     
@@ -40,8 +35,8 @@ def call_phenotype(gene: str, diplotype: str) -> str:
     allele1, allele2 = parse_diplotype_string(diplotype)
     
     # Check direct lookup first
-    if gene in DIPLOTYPE_PHENOTYPES:
-        gene_phenotypes = DIPLOTYPE_PHENOTYPES[gene]
+    if gene in _RULES.diplotype_phenotypes:
+        gene_phenotypes = _RULES.diplotype_phenotypes[gene]
         
         # Try both orderings
         key1 = (allele1, allele2)
@@ -93,8 +88,8 @@ def call_cyp2d6_phenotype_by_activity(allele1: str, allele2: str) -> str:
     - 1.25-2.25: Normal Metabolizer
     - >2.25: Ultrarapid Metabolizer
     """
-    score1 = CYP2D6_ACTIVITY_SCORES.get(allele1, 1.0)  # Default to functional
-    score2 = CYP2D6_ACTIVITY_SCORES.get(allele2, 1.0)
+    score1 = _RULES.cyp2d6_activity_scores.get(allele1, 1.0)  # Default to functional
+    score2 = _RULES.cyp2d6_activity_scores.get(allele2, 1.0)
     
     total_score = score1 + score2
     
@@ -191,8 +186,8 @@ def get_activity_score(gene: str, diplotype: str) -> Optional[float]:
         return None
     
     allele1, allele2 = parse_diplotype_string(diplotype)
-    score1 = CYP2D6_ACTIVITY_SCORES.get(allele1, 1.0)
-    score2 = CYP2D6_ACTIVITY_SCORES.get(allele2, 1.0)
+    score1 = _RULES.cyp2d6_activity_scores.get(allele1, 1.0)
+    score2 = _RULES.cyp2d6_activity_scores.get(allele2, 1.0)
     
     return round(score1 + score2, 2)
 
@@ -207,7 +202,7 @@ def phenotype_to_abbreviation(phenotype: str) -> str:
     Returns:
         Abbreviation like 'PM'
     """
-    return PHENOTYPE_ABBREVIATIONS.get(phenotype, "Unknown")
+    return _RULES.phenotype_abbreviations.get(phenotype, "Unknown")
 
 
 def get_all_phenotypes(diplotypes: Dict[str, str]) -> Dict[str, str]:

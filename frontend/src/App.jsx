@@ -16,6 +16,8 @@ import DrugInput from "./components/DrugInput";
 import RiskCard from "./components/RiskCard";
 import VariantTable from "./components/VariantTable";
 import JsonViewer from "./components/JsonViewer";
+import ConfidenceEvidencePanel from "./components/ConfidenceEvidencePanel";
+import ClinicalOpsPanel from "./components/ClinicalOpsPanel";
 
 import { analyzeVCF, getSupportedDrugs } from "./api";
 
@@ -26,6 +28,7 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("risks");
+  const [concurrentMeds, setConcurrentMeds] = useState("");
 
   const clearSelectedFile = useCallback(() => {
     setVcfFile(null);
@@ -42,7 +45,7 @@ function App() {
     setAnalysisResult(null);
 
     try {
-      const result = await analyzeVCF(vcfFile, selectedDrugs);
+      const result = await analyzeVCF(vcfFile, selectedDrugs, null, concurrentMeds);
       setAnalysisResult(result);
       if (!result.success && result.errors?.length) {
         setError(result.errors.join(" | "));
@@ -53,10 +56,21 @@ function App() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [vcfFile, selectedDrugs]);
+  }, [vcfFile, selectedDrugs, concurrentMeds]);
 
   const canAnalyze = vcfFile && selectedDrugs.length > 0 && !isAnalyzing;
   const analysisResults = analysisResult?.results || [];
+  const cohortSummary = analysisResult?.cohort_summary || null;
+  const strictJsonPayload = analysisResult
+    ? {
+        success: analysisResult.success,
+        results: analysisResults.map((result) => {
+          const { evidence_trace, phenoconversion_check, ...strictResult } = result;
+          return strictResult;
+        }),
+        errors: analysisResult.errors || [],
+      }
+    : null;
   const allDetectedVariants = analysisResults.flatMap(
     (result) => result.pharmacogenomic_profile?.detected_variants || [],
   );
@@ -129,6 +143,18 @@ function App() {
               onDrugsChange={setSelectedDrugs}
               fetchDrugs={getSupportedDrugs}
             />
+            <div className="mt-4">
+              <label className="block text-xs font-semibold tracking-wide text-slate-600 mb-2">
+                Concurrent Medications (optional, comma-separated)
+              </label>
+              <input
+                type="text"
+                value={concurrentMeds}
+                onChange={(event) => setConcurrentMeds(event.target.value)}
+                placeholder="e.g. fluoxetine, omeprazole"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              />
+            </div>
           </div>
         </section>
 
@@ -217,6 +243,8 @@ function App() {
               {[
                 { id: "risks", label: "Risk Analysis", icon: AlertTriangle },
                 { id: "variants", label: "Variants", icon: Dna },
+                { id: "evidence", label: "Evidence", icon: Activity },
+                { id: "ops", label: "Clinical Ops", icon: Sparkles },
                 { id: "json", label: "Raw JSON", icon: Database },
               ].map((tab) => (
                 <button
@@ -251,7 +279,23 @@ function App() {
                 <VariantTable variants={allDetectedVariants} />
               )}
 
-              {activeTab === "json" && <JsonViewer data={analysisResult} />}
+              {activeTab === "evidence" && (
+                <ConfidenceEvidencePanel results={analysisResults} />
+              )}
+
+              {activeTab === "ops" && (
+                <ClinicalOpsPanel
+                  results={analysisResults}
+                  cohortSummary={cohortSummary}
+                />
+              )}
+
+              {activeTab === "json" && (
+                <JsonViewer
+                  data={strictJsonPayload}
+                  title="Required JSON Output (Strict Contract)"
+                />
+              )}
             </div>
           </section>
         )}

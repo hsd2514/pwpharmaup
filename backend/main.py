@@ -55,12 +55,18 @@ from pipeline.pharmgkb_lookup import (
 from pipeline.risk_engine import (
     assess_risk,
     build_clinical_recommendation,
-    get_cpic_action,
+    build_evidence_trace,
+    calculate_confidence_score_v2,
+    has_rule_match,
 )
 from pipeline.llm_explainer import (
     generate_explanation,
     get_explainer,
 )
+from pipeline.explanation_quality import score_explanation_quality
+from pipeline.phenoconversion_detector import detect_phenoconversion
+from pipeline.confidence_calibrator import IsotonicCalibrator
+from pipeline.rules_loader import get_rules
 
 # Import schemas
 from models.schemas import (
@@ -76,6 +82,9 @@ from models.schemas import (
     QualityMetrics,
     DetectedVariant,
 )
+
+_RULES = get_rules()
+_CALIBRATOR = IsotonicCalibrator()
 
 
 # Application lifespan management
@@ -169,6 +178,82 @@ async def normalize_drug(drug_name: str = Form(...)):
     )
 
 
+@app.post("/evidence-trace", tags=["Reference"])
+async def evidence_trace(
+    drug: str = Form(..., description="Drug name"),
+    gene: str = Form(..., description="Gene symbol, e.g. CYP2D6"),
+    phenotype: str = Form(..., description="Full phenotype, e.g. Poor Metabolizer"),
+    vcf_quality: Optional[float] = Form(default=None),
+    annotation_completeness: Optional[float] = Form(default=None),
+    diplotype: Optional[str] = Form(default=None),
+    risk_label: Optional[str] = Form(default=None),
+    detected_variant_count: Optional[int] = Form(default=None),
+    gene_support_score: Optional[float] = Form(default=None),
+    calibrated_confidence: Optional[float] = Form(default=None),
+    rsid: Optional[str] = Form(default=None),
+):
+    """
+    Deterministic provenance endpoint for clinical review and judging.
+    Returns which rule/evidence rows were used for the decision path.
+    """
+    return build_evidence_trace(
+        drug=drug,
+        gene=gene,
+        phenotype=phenotype,
+        vcf_quality=vcf_quality,
+        annotation_completeness=annotation_completeness,
+        diplotype=diplotype,
+        risk_label=risk_label,
+        detected_variant_count=detected_variant_count,
+        gene_support_score=gene_support_score,
+        calibrated_confidence=calibrated_confidence,
+        rsid=rsid,
+    )
+
+
+@app.post("/explanation-quality", tags=["Reference"])
+async def explanation_quality(
+    drug: str = Form(...),
+    gene: str = Form(...),
+    summary: str = Form(...),
+    mechanism: str = Form(...),
+    variant_impact: str = Form(...),
+    clinical_context: str = Form(...),
+    patient_summary: str = Form(...),
+):
+    """
+    Deterministic explanation quality scoring endpoint.
+    """
+    explanation = LLMGeneratedExplanation(
+        summary=summary,
+        mechanism=mechanism,
+        variant_impact=variant_impact,
+        clinical_context=clinical_context,
+        patient_summary=patient_summary,
+    )
+    return score_explanation_quality(
+        explanation=explanation,
+        gene=gene,
+        drug=drug,
+        detected_variants=[],
+        cpic_action=clinical_context,
+    )
+
+
+@app.post("/phenoconversion-check", tags=["Reference"])
+async def phenoconversion_check(
+    gene: str = Form(...),
+    genetic_phenotype: str = Form(..., description="PM|IM|NM|RM|URM|Unknown"),
+    concurrent_medications: str = Form(default=""),
+):
+    meds = [m.strip() for m in (concurrent_medications or "").split(",") if m.strip()]
+    return detect_phenoconversion(
+        gene=gene,
+        genetic_phenotype_abbrev=genetic_phenotype,
+        concurrent_medications=meds,
+    )
+
+
 # =============================================================================
 # Sample VCF Download Endpoint
 # =============================================================================
@@ -211,7 +296,10 @@ async def get_sample_vcf(phenotype_type: str):
 async def analyze_vcf(
     vcf_file: UploadFile = File(..., description="VCF file containing genetic variants"),
     drugs: str = Form(..., description="Comma-separated list of drug names to analyze"),
-    patient_id: Optional[str] = Form(default=None, description="Optional patient identifier")
+    patient_id: Optional[str] = Form(default=None, description="Optional patient identifier"),
+    concurrent_medications: Optional[str] = Form(
+        default=None, description="Optional comma-separated concurrent medications"
+    ),
 ):
     """
     Analyze a VCF file for pharmacogenomic drug risks.
@@ -231,7 +319,7 @@ async def analyze_vcf(
     
     Returns analysis results for each drug.
     """
-    response = await _run_analysis(vcf_file, drugs, patient_id)
+    response = await _run_analysis(vcf_file, drugs, patient_id, concurrent_medications)
     return response
 
 
@@ -240,12 +328,15 @@ async def analyze_vcf_strict(
     vcf_file: UploadFile = File(..., description="VCF file containing genetic variants"),
     drugs: str = Form(..., description="Comma-separated list of drug names to analyze"),
     patient_id: Optional[str] = Form(default=None, description="Optional patient identifier"),
+    concurrent_medications: Optional[str] = Form(
+        default=None, description="Optional comma-separated concurrent medications"
+    ),
 ):
     """
     Strict evaluator-friendly endpoint.
     Returns only AnalysisResult[] and fails if any per-drug analysis error occurs.
     """
-    response = await _run_analysis(vcf_file, drugs, patient_id)
+    response = await _run_analysis(vcf_file, drugs, patient_id, concurrent_medications)
     if response.errors:
         raise HTTPException(
             status_code=422,
@@ -258,6 +349,7 @@ async def _run_analysis(
     vcf_file: UploadFile,
     drugs: str,
     patient_id: Optional[str],
+    concurrent_medications: Optional[str],
 ) -> AnalyzeResponse:
     errors = []
     results = []
@@ -265,7 +357,16 @@ async def _run_analysis(
     if not patient_id:
         patient_id = f"patient_{uuid.uuid4().hex[:8]}"
 
-    drug_list = [d.strip() for d in drugs.split(",") if d.strip()]
+    raw_drugs = [d.strip() for d in drugs.split(",") if d.strip()]
+    seen = set()
+    drug_list = []
+    for raw in raw_drugs:
+        canonical = normalize_drug_name(raw)
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        drug_list.append(canonical)
+    concurrent_meds = [m.strip() for m in (concurrent_medications or "").split(",") if m.strip()]
     if not drug_list:
         raise HTTPException(status_code=400, detail="No drugs specified")
 
@@ -305,6 +406,7 @@ async def _run_analysis(
                 diplotypes=diplotypes,
                 vcf_quality=vcf_quality,
                 annotation_completeness=annotation_completeness,
+                concurrent_medications=concurrent_meds,
             )
             results.append(result)
         except Exception as e:
@@ -320,7 +422,8 @@ async def analyze_single_drug(
     variants: list,
     diplotypes: dict,
     vcf_quality: float,
-    annotation_completeness: float
+    annotation_completeness: float,
+    concurrent_medications: list[str],
 ) -> AnalysisResult:
     """
     Analyze a single drug against patient variants.
@@ -344,26 +447,79 @@ async def analyze_single_drug(
     
     # Stage 2b: Extract detected variants for this gene
     detected_variants = extract_detected_variants(variants, primary_gene)
+    gene_support_score = 1.0 if len(detected_variants) > 0 else 0.7
     
     # Stage 4: PharmGKB lookup
     annotation = lookup_annotation(primary_gene, normalized_drug)
     
-    # Stage 5: Risk assessment
-    risk_assessment = assess_risk(normalized_drug, primary_gene, phenotype_full)
+    phenoconversion = detect_phenoconversion(
+        gene=primary_gene,
+        genetic_phenotype_abbrev=phenotype_abbrev,
+        concurrent_medications=concurrent_medications,
+    )
+    if phenoconversion.get("phenoconversion_risk"):
+        effective_phenotype_full = phenoconversion.get("functional_phenotype_full", phenotype_full)
+    else:
+        effective_phenotype_full = phenotype_full
+
+    # Stage 5: Risk assessment (uses functional phenotype if phenoconversion is detected)
+    risk_assessment = assess_risk(normalized_drug, primary_gene, effective_phenotype_full)
     
-    # Build clinical recommendation
-    clinical_rec = build_clinical_recommendation(normalized_drug, primary_gene, phenotype_full)
-    cpic_action = get_cpic_action(normalized_drug, primary_gene, phenotype_full)
+    # Build clinical recommendation (phenoconversion-aware override text included when applicable)
+    clinical_rec = build_clinical_recommendation(
+        normalized_drug,
+        primary_gene,
+        effective_phenotype_full,
+        phenoconversion=phenoconversion,
+        genetic_phenotype=phenotype_abbrev,
+    )
+    cpic_action = clinical_rec.action
+
+    # Calibrated deterministic confidence scoring (component-based).
+    evidence_level = annotation.evidence_level if annotation else "4"
+    raw_confidence = calculate_confidence_score_v2(
+        evidence_level=evidence_level,
+        vcf_quality=vcf_quality,
+        annotation_completeness=annotation_completeness,
+        phenotype=effective_phenotype_full,
+        diplotype=diplotype,
+        risk_label=risk_assessment.risk_label,
+        rule_match=has_rule_match(normalized_drug, primary_gene, effective_phenotype_full),
+        detected_variant_count=len(detected_variants),
+        gene_support_score=gene_support_score,
+    )
+    penalty = float(phenoconversion.get("confidence_penalty", 0.0))
+    penalized_confidence = max(0.0, raw_confidence - penalty)
+    calibrated_confidence = _CALIBRATOR.calibrate(penalized_confidence)
+    risk_assessment = RiskAssessment(
+        risk_label=risk_assessment.risk_label,
+        confidence_score=calibrated_confidence,
+        severity=risk_assessment.severity,
+    )
     
     # Stage 6: Generate LLM explanation
     explanation = await generate_explanation(
         drug=normalized_drug,
         gene=primary_gene,
         diplotype=diplotype,
-        phenotype=phenotype_full,
+        phenotype=effective_phenotype_full,
         risk_assessment=risk_assessment,
         detected_variants=detected_variants,
         cpic_action=cpic_action
+    )
+    explanation_quality = score_explanation_quality(
+        explanation=explanation,
+        gene=primary_gene,
+        drug=normalized_drug,
+        detected_variants=detected_variants,
+        cpic_action=cpic_action,
+    )
+    logger.info(
+        "Explanation quality score for %s/%s: %s (fails=%s)",
+        normalized_drug,
+        primary_gene,
+        explanation_quality.get("explanation_quality_score"),
+        ",".join(explanation_quality.get("quality_fail_reasons", [])),
     )
     
     # Build pharmacogenomic profile
@@ -386,7 +542,8 @@ async def analyze_single_drug(
         variants_analyzed=len(variants),
         annotation_completeness=annotation_completeness,
         confidence_level=confidence_level,
-        analysis_version="1.0.0"
+        analysis_version="1.0.0",
+        clinical_rules_version=_RULES.rules_version,
     )
     
     # Stage 7: Build and validate final result
@@ -404,6 +561,37 @@ async def analyze_single_drug(
     )
     
     return result
+
+
+@app.post("/cohort-summary", tags=["Analysis"])
+async def cohort_summary(results: List[AnalysisResult]):
+    """
+    Aggregate multiple analysis results into cohort-level risk distribution.
+    """
+    matrix = {}
+    high_risk_patients = []
+    for item in results:
+        drug = item.drug
+        risk = item.risk_assessment.risk_label
+        if drug not in matrix:
+            matrix[drug] = {
+                "Safe": 0,
+                "Adjust Dosage": 0,
+                "Toxic": 0,
+                "Ineffective": 0,
+                "Unknown": 0,
+            }
+        matrix[drug][risk] += 1
+        if item.risk_assessment.severity in {"critical", "high"}:
+            high_risk_patients.append(item.patient_id)
+
+    return {
+        "cohort_size": len(results),
+        "risk_matrix": matrix,
+        "high_risk_patients": sorted(set(high_risk_patients)),
+        "high_risk_count": len(set(high_risk_patients)),
+        "alert": f"{len(set(high_risk_patients))} patients require immediate clinical review",
+    }
 
 
 # =============================================================================

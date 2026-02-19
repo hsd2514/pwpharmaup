@@ -85,10 +85,8 @@ pwioi/
 
 ```powershell
 cd backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uv sync
+uv run uvicorn main:app --reload --port 8000
 ```
 
 **Frontend:**
@@ -135,9 +133,14 @@ The `sample_vcf/` directory contains test files for different scenarios:
 | Method | Endpoint                 | Description          |
 | ------ | ------------------------ | -------------------- |
 | `POST` | `/analyze`               | Analyze VCF + drugs  |
+| `POST` | `/analyze-strict`        | Strict evaluator mode (returns `AnalysisResult[]`) |
+| `POST` | `/evidence-trace`        | Deterministic rule/evidence provenance for a decision |
+| `POST` | `/explanation-quality`   | Deterministic explanation quality score + fail reasons |
+| `POST` | `/cohort-summary`        | Cohort-level risk matrix and high-risk patient list |
+| `POST` | `/normalize-drug`        | Normalize drug name  |
+| `POST` | `/phenoconversion-check` | Check inhibitor-driven phenotype shift |
 | `GET`  | `/supported-drugs`       | List available drugs |
-| `GET`  | `/normalize-drug/{drug}` | Normalize drug name  |
-| `GET`  | `/sample-vcf/{filename}` | Download sample VCF  |
+| `GET`  | `/sample-vcf/{phenotype_type}` | Download sample VCF by type (`pm_cyp2d6`, `pm_cyp2c19`, `im_cyp2c9`, `dpyd_im`, `normal_all`) |
 | `GET`  | `/health`                | Health check         |
 
 ### Example Request
@@ -146,8 +149,10 @@ The `sample_vcf/` directory contains test files for different scenarios:
 curl -X POST http://localhost:8000/analyze \
   -F "vcf_file=@sample_vcf/pm_cyp2d6.vcf" \
   -F "drugs=codeine" \
-  -F "drugs=tramadol"
+  -F "concurrent_medications=fluoxetine,omeprazole"
 ```
+
+`concurrent_medications` is optional and enables phenoconversion detection.
 
 ---
 
@@ -155,9 +160,9 @@ curl -X POST http://localhost:8000/analyze \
 
 The UI follows a **biotech laboratory aesthetic**:
 
-- **Color Palette:** Void black (#030608) + Bioluminescent cyan (#00e5c7)
+- **Color Palette:** clinical light neutrals + teal accents for medical readability
 - **Typography:** Syne (display), DM Sans (body), JetBrains Mono (data)
-- **Effects:** Glass panels, molecular grid background, subtle glow effects
+- **Effects:** Glass panels, molecular grid background, conservative motion
 - **Risk Badges:** Color-coded severity indicators (green/yellow/orange/red)
 
 ---
@@ -174,17 +179,33 @@ The UI follows a **biotech laboratory aesthetic**:
 
 ---
 
+## 📦 Dependency Management (uv)
+
+Backend dependencies are managed via:
+- `backend/pyproject.toml`
+- `backend/uv.lock`
+
+Primary commands:
+```powershell
+cd backend
+uv sync
+uv run python -m unittest discover -s tests -v
+```
+
+`requirements.txt` is kept only for compatibility with platforms that explicitly require it.
+
+---
+
 ## 📋 Supported Genes & Drugs
 
 ### Genes
 
-- **CYP2D6** — codeine, tramadol, tamoxifen
-- **CYP2C19** — clopidogrel, omeprazole, escitalopram
-- **CYP2C9** — warfarin, phenytoin
-- **DPYD** — fluorouracil, capecitabine
-- **TPMT** — azathioprine, mercaptopurine
+- **CYP2D6** — codeine
+- **CYP2C19** — clopidogrel
+- **CYP2C9** — warfarin
+- **DPYD** — fluorouracil
+- **TPMT** — azathioprine
 - **SLCO1B1** — simvastatin
-- **UGT1A1** — irinotecan
 
 ### Risk Levels
 
@@ -192,6 +213,39 @@ The UI follows a **biotech laboratory aesthetic**:
 - 🟡 **Moderate** — Minor adjustments, routine monitoring
 - 🟠 **High** — Significant adjustments, enhanced monitoring
 - 🔴 **Critical** — Avoid drug or use alternative therapy
+
+---
+
+## ✅ Implemented Features Checklist
+
+- 7-stage pipeline implemented end-to-end (VCF -> risk -> explanation -> schema validation)
+- Dual-LLM explanation chain with robust template fallback
+- Externalized clinical rules (`backend/data/clinical_rules/rules.v1.json`)
+- Component-based deterministic confidence scoring (evidence + genotype + phenotype + rule coverage)
+- Dashboard Evidence tab with confidence component graph and provenance metadata
+- Strict endpoint for evaluator compatibility (`/analyze-strict`)
+- Golden backend tests for core drug/gene scenarios
+- Deterministic evidence trace endpoint (`/evidence-trace`) for scientific auditability
+- Scientific-method implementation log (`SCIENTIFIC_METHOD_LOG.md`)
+- Fixture-based strict snapshot conformance test (`backend/tests/fixtures`)
+- Deterministic explanation quality scorer (`/explanation-quality`)
+- Confidence calibration evaluation script (`backend/scripts/evaluate_confidence_calibration.py`)
+- Phenoconversion detector with concurrent medication support
+- Enhanced evidence trace with step-by-step `decision_chain`
+- Cohort summary endpoint for multi-patient risk heatmap backends
+
+---
+
+## 🧾 Scientific Claim Guardrails
+
+- Claims matrix: `CLAIMS_MATRIX.md`
+- Research-to-implementation evidence log: `RESEARCH_EVIDENCE_LOG.md`
+- Experiment log and implementation trace: `SCIENTIFIC_METHOD_LOG.md`
+
+Policy used in this repo:
+- confidence weights are treated as evidence-informed priors with calibration (not directly paper-fitted constants)
+- phenoconversion behavior is documented to match code-level downgrade rules
+- impact statements are phrased as trial-context outcomes, not deterministic population guarantees
 
 ---
 

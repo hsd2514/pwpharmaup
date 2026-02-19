@@ -16,14 +16,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from models.constants import (
-    CPIC_REFERENCES,
-    DRUG_ALIASES,
-    EVIDENCE_CONFIDENCE,
-    SUPPORTED_DRUGS,
-)
+from pipeline.rules_loader import get_rules
 
 logger = logging.getLogger(__name__)
+_RULES = get_rules()
 
 # Resolve data directory relative to this file: backend/data/
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -130,7 +126,7 @@ def _load_clinical_annotations(path: Path) -> Dict[Tuple[str, str], PharmGKBAnno
                     )
                     continue
 
-                cpic = CPIC_REFERENCES.get(gene, f"CPIC Guideline for {gene}")
+                cpic = _RULES.cpic_references.get(gene, f"CPIC Guideline for {gene}")
                 annotations[key] = PharmGKBAnnotation(
                     gene=gene,
                     drug=drug,
@@ -236,15 +232,15 @@ def normalize_drug_name(drug_name: str) -> str:
     drug_upper = drug_name.strip().upper()
     
     # Check aliases first
-    if drug_upper in DRUG_ALIASES:
-        return DRUG_ALIASES[drug_upper]
+    if drug_upper in _RULES.drug_aliases:
+        return _RULES.drug_aliases[drug_upper]
     
     # Check if already a supported drug
-    if drug_upper in SUPPORTED_DRUGS:
+    if drug_upper in _RULES.supported_drugs:
         return drug_upper
     
     # Try partial matching
-    for alias, standard in DRUG_ALIASES.items():
+    for alias, standard in _RULES.drug_aliases.items():
         if alias in drug_upper or drug_upper in alias:
             return standard
     
@@ -263,7 +259,7 @@ def get_primary_gene(drug: str) -> Optional[str]:
         Gene symbol or None if not supported
     """
     normalized = normalize_drug_name(drug)
-    return SUPPORTED_DRUGS.get(normalized)
+    return _RULES.supported_drugs.get(normalized)
 
 
 def lookup_annotation(gene: str, drug: str) -> Optional[PharmGKBAnnotation]:
@@ -293,7 +289,7 @@ def get_evidence_confidence_range(evidence_level: str) -> Tuple[float, float]:
     Returns:
         Tuple of (min_confidence, max_confidence)
     """
-    return EVIDENCE_CONFIDENCE.get(evidence_level, (0.50, 0.60))
+    return _RULES.evidence_confidence.get(evidence_level, (0.50, 0.60))
 
 
 def is_drug_supported(drug: str) -> bool:
@@ -307,7 +303,7 @@ def is_drug_supported(drug: str) -> bool:
         True if supported
     """
     normalized = normalize_drug_name(drug)
-    return normalized in SUPPORTED_DRUGS
+    return normalized in _RULES.supported_drugs
 
 
 def get_all_supported_drugs() -> list:
@@ -317,7 +313,7 @@ def get_all_supported_drugs() -> list:
     Returns:
         List of supported drug names
     """
-    return list(SUPPORTED_DRUGS.keys())
+    return list(_RULES.supported_drugs.keys())
 
 
 def get_fda_requirement(gene: str, drug: str) -> str:

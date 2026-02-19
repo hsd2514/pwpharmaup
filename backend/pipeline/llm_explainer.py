@@ -28,10 +28,11 @@ from google.cloud import aiplatform
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
 
-from models.constants import CPIC_REFERENCES
 from models.schemas import DetectedVariant, LLMGeneratedExplanation, RiskAssessment
+from pipeline.rules_loader import get_rules
 
 logger = logging.getLogger(__name__)
+_RULES = get_rules()
 
 # ---------------------------------------------------------------------------
 # Bootstrap credentials from GOOGLE_CREDENTIALS_BASE64 if provided
@@ -413,7 +414,7 @@ class LLMExplainer:
             summary = f"Patient carries {diplotype} ({gene}), classified as {phenotype}. Standard dosing of {drug} is appropriate. Variants: {variant_str}."
             patient_summary = f"{drug} should work normally for you at standard doses."
 
-        ref = CPIC_REFERENCES.get(f"{gene}_{drug}", {})
+        ref = _RULES.cpic_references.get(f"{gene}_{drug}", {})
         clinical_context = (
             f"{cpic_action} Reference: {ref.get('authors','')} ({ref.get('year','')}). PMID: {ref.get('pmid','')}."
             if ref else cpic_action

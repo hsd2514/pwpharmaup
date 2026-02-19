@@ -9,9 +9,10 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass
 
 from models.schemas import VariantRecord
-from models.constants import RSID_TO_STAR_ALLELE, TARGET_GENES
+from pipeline.rules_loader import get_rules
 
 logger = logging.getLogger(__name__)
+_RULES = get_rules()
 
 
 class VCFParseError(Exception):
@@ -66,8 +67,8 @@ def infer_star_allele_from_rsid(rsid: str) -> Tuple[Optional[str], Optional[str]
     Infer gene and star allele from rsID using lookup table.
     Returns: (gene, star_allele, function)
     """
-    if rsid in RSID_TO_STAR_ALLELE:
-        info = RSID_TO_STAR_ALLELE[rsid]
+    if rsid in _RULES.rsid_to_star_allele:
+        info = _RULES.rsid_to_star_allele[rsid]
         return info["gene"], info["star"], info.get("function")
     return None, None, None
 
@@ -157,7 +158,7 @@ def parse_vcf_content(vcf_content: str, min_qual: float = 20.0) -> List[VariantR
                     star_allele = inferred_star
             
             # Only include variants for target genes
-            if gene and gene not in TARGET_GENES:
+            if gene and gene not in _RULES.target_genes:
                 continue
             
             # Parse genotype from FORMAT/SAMPLE columns
@@ -176,7 +177,7 @@ def parse_vcf_content(vcf_content: str, min_qual: float = 20.0) -> List[VariantR
                 gene=gene,
                 star_allele=star_allele,
                 genotype=genotype,
-                function=RSID_TO_STAR_ALLELE.get(rsid, {}).get("function")
+                function=_RULES.rsid_to_star_allele.get(rsid, {}).get("function")
             )
             
             variants.append(variant)

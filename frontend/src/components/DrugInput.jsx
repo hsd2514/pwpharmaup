@@ -125,7 +125,7 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
       )}
 
       {/* Dropdown */}
-      <div ref={dropdownRef} className="relative">
+      <div ref={dropdownRef} className="relative z-30">
         <button
           type="button"
           onClick={() => {
@@ -134,21 +134,23 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
           }}
           className="w-full rounded-xl border border-ash/60 bg-slate/60 px-4 py-3 text-left transition-colors hover:border-cyan-glow/50"
         >
-          <div className="flex items-center gap-3">
-            <Pill className="w-5 h-5 text-cyan-glow" />
-            <span className="text-light">
-              {selectedDrugs.length === 0
-                ? "Select drugs to analyze"
-                : `${selectedDrugs.length} drug${selectedDrugs.length > 1 ? "s" : ""} selected`}
-            </span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Pill className="w-5 h-5 text-cyan-glow" />
+              <span className="text-light">
+                {selectedDrugs.length === 0
+                  ? "Select drugs to analyze"
+                  : `${selectedDrugs.length} drug${selectedDrugs.length > 1 ? "s" : ""} selected`}
+              </span>
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-mist transition-transform ${isOpen ? "rotate-180" : ""}`}
+            />
           </div>
-          <ChevronDown
-            className={`w-5 h-5 text-mist transition-transform ${isOpen ? "rotate-180" : ""}`}
-          />
         </button>
 
         {isOpen && (
-          <div className="mt-2 w-full overflow-hidden rounded-xl border border-ash/60 bg-abyss/98 shadow-[0_16px_44px_rgba(2,6,10,0.55)]">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-xl border border-ash/60 bg-abyss/98 shadow-[0_16px_44px_rgba(2,6,10,0.55)]">
             {/* Search input */}
             <div className="p-3 border-b border-ash/50">
               <input

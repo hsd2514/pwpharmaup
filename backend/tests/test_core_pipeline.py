@@ -2,9 +2,17 @@ import unittest
 
 from models.schemas import QualityMetrics
 from pipeline.pypgx_engine import call_phenotype
-from pipeline.risk_engine import assess_risk, get_cpic_action
+from pipeline.risk_engine import (
+    assess_risk,
+    get_cpic_action,
+    calculate_confidence_components,
+    calculate_confidence_score_v2,
+)
 from pipeline.variant_extractor import extract_detected_variants, extract_diplotypes
 from pipeline.vcf_parser import parse_vcf_content
+from pipeline.explanation_quality import score_explanation_quality
+from models.schemas import LLMGeneratedExplanation, DetectedVariant
+from pipeline.confidence_calibrator import IsotonicCalibrator
 
 
 class CorePipelineTests(unittest.TestCase):
@@ -62,6 +70,65 @@ class CorePipelineTests(unittest.TestCase):
         self.assertEqual(risk.severity, "unknown")
         action = get_cpic_action("WARFARIN", "CYP2C9", "Ultrarapid Metabolizer")
         self.assertIn("No curated pharmacogenomic rule found", action)
+
+    def test_confidence_components_are_bounded(self):
+        comp = calculate_confidence_components(
+            evidence_level="1A",
+            vcf_quality=96.0,
+            annotation_completeness=1.0,
+            phenotype="Poor Metabolizer",
+            diplotype="*4/*4",
+            risk_label="Toxic",
+        )
+        self.assertEqual(set(comp.keys()), {"evidence", "genotype", "phenotype", "rule_coverage"})
+        for value in comp.values():
+            self.assertGreaterEqual(value, 0.0)
+            self.assertLessEqual(value, 1.0)
+
+    def test_unknown_confidence_is_capped(self):
+        score = calculate_confidence_score_v2(
+            evidence_level="1A",
+            vcf_quality=100.0,
+            annotation_completeness=1.0,
+            phenotype="Unknown",
+            diplotype="*1/*1",
+            risk_label="Unknown",
+        )
+        self.assertLessEqual(score, 0.69)
+
+    def test_explanation_quality_scoring(self):
+        explanation = LLMGeneratedExplanation(
+            summary="Patient has CYP2D6 *4/*4 with rs3892097 and high toxicity risk for CODEINE.",
+            mechanism="CYP2D6 converts codeine to morphine; loss of function alters exposure.",
+            variant_impact="*4/*4 indicates no function activity.",
+            clinical_context="Avoid codeine and use alternatives; monitor clinically.",
+            patient_summary="Your genes show this medicine is unsafe. Ask for an alternative.",
+        )
+        variants = [
+            DetectedVariant(
+                rsid="rs3892097",
+                gene="CYP2D6",
+                star_allele="*4",
+                zygosity="homozygous",
+                function="No function",
+                clinical_significance="Loss-of-function variant",
+            )
+        ]
+        out = score_explanation_quality(
+            explanation=explanation,
+            gene="CYP2D6",
+            drug="CODEINE",
+            detected_variants=variants,
+            cpic_action="Avoid codeine.",
+        )
+        self.assertGreaterEqual(out["explanation_quality_score"], 0.8)
+        self.assertTrue(out["passed"])
+
+    def test_confidence_calibrator_maps_bins(self):
+        calibrator = IsotonicCalibrator()
+        self.assertEqual(calibrator.calibrate(0.95), 0.95)
+        self.assertEqual(calibrator.calibrate(0.85), 0.87)
+        self.assertEqual(calibrator.calibrate(0.35), 0.3)
 
 
 if __name__ == "__main__":

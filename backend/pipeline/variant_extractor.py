@@ -8,9 +8,10 @@ from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 
 from models.schemas import VariantRecord, DetectedVariant
-from models.constants import TARGET_GENES, DEFAULT_DIPLOTYPE, RSID_TO_STAR_ALLELE
+from pipeline.rules_loader import get_rules
 
 logger = logging.getLogger(__name__)
+_RULES = get_rules()
 
 
 def determine_zygosity(genotype: str) -> str:
@@ -49,16 +50,16 @@ def extract_diplotypes(variants: List[VariantRecord]) -> Dict[str, str]:
     gene_variants: Dict[str, List[VariantRecord]] = defaultdict(list)
     
     for variant in variants:
-        if variant.gene and variant.gene in TARGET_GENES:
+        if variant.gene and variant.gene in _RULES.target_genes:
             gene_variants[variant.gene].append(variant)
     
     # Build diplotypes for each gene
     diplotypes: Dict[str, str] = {}
     
-    for gene in TARGET_GENES:
+    for gene in _RULES.target_genes:
         if gene not in gene_variants or not gene_variants[gene]:
             # No variants detected - assume wild type
-            diplotypes[gene] = DEFAULT_DIPLOTYPE
+            diplotypes[gene] = _RULES.default_diplotype
             continue
         
         gene_vars = gene_variants[gene]
@@ -82,7 +83,7 @@ def extract_diplotypes(variants: List[VariantRecord]) -> Dict[str, str]:
         
         # Build diplotype string
         if len(star_alleles) == 0:
-            diplotypes[gene] = DEFAULT_DIPLOTYPE
+            diplotypes[gene] = _RULES.default_diplotype
         elif len(star_alleles) == 1:
             # Single heterozygous variant - pair with *1
             diplotypes[gene] = f"*1/{star_alleles[0]}"
@@ -133,8 +134,8 @@ def get_clinical_significance(rsid: str, star_allele: str) -> Optional[str]:
     Get clinical significance annotation for a variant.
     """
     # Look up in our rsID table
-    if rsid in RSID_TO_STAR_ALLELE:
-        function = RSID_TO_STAR_ALLELE[rsid].get("function", "")
+    if rsid in _RULES.rsid_to_star_allele:
+        function = _RULES.rsid_to_star_allele[rsid].get("function", "")
         if "No function" in function:
             return "Loss-of-function variant"
         elif "Decreased" in function:
@@ -173,10 +174,8 @@ def get_primary_gene_for_drug(drug: str) -> Optional[str]:
     """
     Get the primary metabolizing gene for a drug.
     """
-    from models.constants import SUPPORTED_DRUGS
-    
     drug_upper = drug.upper()
-    return SUPPORTED_DRUGS.get(drug_upper)
+    return _RULES.supported_drugs.get(drug_upper)
 
 
 def parse_diplotype(diplotype: str) -> Tuple[str, str]:
