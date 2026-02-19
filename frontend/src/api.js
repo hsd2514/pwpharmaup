@@ -38,7 +38,15 @@ export async function analyzeVCF(
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
 
-  const strictResults = await response.json();
+  const strictResultsRaw = await response.json();
+  const strictResults = [];
+  const seen = new Set();
+  for (const item of strictResultsRaw || []) {
+    const key = `${item?.patient_id || ""}::${item?.drug || ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    strictResults.push(item);
+  }
 
   const enrichedResults = await Promise.all(
     strictResults.map(async (result) => {

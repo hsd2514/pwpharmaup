@@ -42,7 +42,6 @@ from pipeline.variant_extractor import (
 )
 from pipeline.pypgx_engine import (
     call_phenotype,
-    get_activity_score,
     phenotype_to_abbreviation,
 )
 from pipeline.pharmgkb_lookup import (
@@ -443,7 +442,6 @@ async def analyze_single_drug(
     # Stage 3: Call phenotype
     phenotype_full = call_phenotype(primary_gene, diplotype)
     phenotype_abbrev = phenotype_to_abbreviation(phenotype_full)
-    activity_score = get_activity_score(primary_gene, diplotype)
     
     # Stage 2b: Extract detected variants for this gene
     detected_variants = extract_detected_variants(variants, primary_gene)
@@ -527,7 +525,6 @@ async def analyze_single_drug(
         primary_gene=primary_gene,
         diplotype=diplotype,
         phenotype=phenotype_abbrev,
-        activity_score=activity_score,
         detected_variants=detected_variants
     )
     

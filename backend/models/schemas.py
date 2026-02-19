@@ -25,7 +25,6 @@ class Severity(str, Enum):
     MODERATE = "moderate"
     HIGH = "high"
     CRITICAL = "critical"
-    UNKNOWN = "unknown"
 
 
 class PhenotypeLabel(str, Enum):
@@ -68,7 +67,7 @@ class RiskAssessment(StrictModel):
     """Risk assessment output from Stage 5."""
     risk_label: Literal["Safe", "Adjust Dosage", "Toxic", "Ineffective", "Unknown"]
     confidence_score: float = Field(..., ge=0.0, le=1.0)
-    severity: Literal["none", "low", "moderate", "high", "critical", "unknown"]
+    severity: Literal["none", "low", "moderate", "high", "critical"]
     
     @field_validator('confidence_score')
     @classmethod
@@ -95,7 +94,6 @@ class PharmacoGenomicProfile(StrictModel):
     primary_gene: str
     diplotype: str
     phenotype: Literal["PM", "IM", "NM", "RM", "URM", "Unknown"]
-    activity_score: Optional[float] = None
     detected_variants: List[DetectedVariant]
 
 

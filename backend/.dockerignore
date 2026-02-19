@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+project-5472ac38-f732-4711-b1e-d72542892a23.json
+*.pyc
+*.pyo
+*.pyd

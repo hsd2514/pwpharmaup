@@ -68,7 +68,7 @@ def assess_risk(
     return RiskAssessment(
         risk_label="Unknown",
         confidence_score=0.50,
-        severity="unknown"
+        severity="low"
     )
 
 
@@ -218,7 +218,7 @@ def build_monitoring_guidance(drug: str, gene: str, phenotype: str) -> str:
         return "Intensive monitoring required. Check labs frequently. Watch for adverse events."
     elif risk.severity == "moderate":
         return "Monitor patient response. Adjust dose as needed based on clinical outcome."
-    elif risk.severity == "unknown":
+    elif risk.risk_label == "Unknown":
         return (
             "Insufficient curated evidence for this combination. "
             "Use standard monitoring and seek specialist pharmacogenomic review."

@@ -61,16 +61,10 @@ function App() {
   const canAnalyze = vcfFile && selectedDrugs.length > 0 && !isAnalyzing;
   const analysisResults = analysisResult?.results || [];
   const cohortSummary = analysisResult?.cohort_summary || null;
-  const strictJsonPayload = analysisResult
-    ? {
-        success: analysisResult.success,
-        results: analysisResults.map((result) => {
-          const { evidence_trace, phenoconversion_check, ...strictResult } = result;
-          return strictResult;
-        }),
-        errors: analysisResult.errors || [],
-      }
-    : null;
+  const strictResults = analysisResults.map((result) => {
+    const { evidence_trace, phenoconversion_check, ...strictResult } = result;
+    return strictResult;
+  });
   const allDetectedVariants = analysisResults.flatMap(
     (result) => result.pharmacogenomic_profile?.detected_variants || [],
   );
@@ -291,10 +285,22 @@ function App() {
               )}
 
               {activeTab === "json" && (
-                <JsonViewer
-                  data={strictJsonPayload}
-                  title="Required JSON Output (Strict Contract)"
-                />
+                strictResults.length <= 1 ? (
+                  <JsonViewer
+                    data={strictResults[0] || null}
+                    title="Required AnalysisResult JSON"
+                  />
+                ) : (
+                  <div className="grid gap-4">
+                    {strictResults.map((item, idx) => (
+                      <JsonViewer
+                        key={`${item.drug || "drug"}-${idx}`}
+                        data={item}
+                        title={`Required AnalysisResult JSON — ${item.drug || `Drug ${idx + 1}`}`}
+                      />
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </section>

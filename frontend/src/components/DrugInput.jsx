@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Pill, X, ChevronDown } from "lucide-react";
 
 const FALLBACK_DRUGS = [
@@ -24,10 +25,19 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
   const [searchTerm, setSearchTerm] = useState("");
   const [supportedDrugs, setSupportedDrugs] = useState(FALLBACK_DRUGS);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const clickedToggle =
+        dropdownRef.current && dropdownRef.current.contains(event.target);
+      const clickedMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!clickedToggle && !clickedMenu) {
         setIsOpen(false);
         setSearchTerm("");
       }
@@ -71,6 +81,25 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
       mounted = false;
     };
   }, [fetchDrugs]);
+
+  useEffect(() => {
+    function updateMenuPosition() {
+      if (!dropdownRef.current || !isOpen) return;
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setMenuStyle({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [isOpen]);
 
   const filteredDrugs = useMemo(
     () =>
@@ -149,8 +178,19 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
           </div>
         </button>
 
-        {isOpen && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 w-full overflow-hidden rounded-xl border border-ash/60 bg-abyss/98 shadow-[0_16px_44px_rgba(2,6,10,0.55)]">
+        {isOpen &&
+          createPortal(
+            <div
+              ref={menuRef}
+              style={{
+                position: "fixed",
+                top: `${menuStyle.top}px`,
+                left: `${menuStyle.left}px`,
+                width: `${menuStyle.width}px`,
+                zIndex: 9999,
+              }}
+              className="overflow-hidden rounded-xl border border-ash/60 bg-abyss/98 shadow-[0_16px_44px_rgba(2,6,10,0.55)]"
+            >
             {/* Search input */}
             <div className="p-3 border-b border-ash/50">
               <input
@@ -210,7 +250,8 @@ export default function DrugInput({ selectedDrugs, onDrugsChange, fetchDrugs }) 
                 );
               })}
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>

@@ -67,7 +67,7 @@ class CorePipelineTests(unittest.TestCase):
     def test_unknown_combination_has_explicit_unknown_action(self):
         risk = assess_risk("WARFARIN", "CYP2C9", "Ultrarapid Metabolizer")
         self.assertEqual(risk.risk_label, "Unknown")
-        self.assertEqual(risk.severity, "unknown")
+        self.assertEqual(risk.severity, "low")
         action = get_cpic_action("WARFARIN", "CYP2C9", "Ultrarapid Metabolizer")
         self.assertIn("No curated pharmacogenomic rule found", action)
 

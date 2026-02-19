@@ -12,3 +12,5 @@ wheels/
 # Local env & credentials — never commit these
 .env
 *.json
+
+.vercel
