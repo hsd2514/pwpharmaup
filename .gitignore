@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.envrc
 
 # Python
 __pycache__/
@@ -56,3 +57,16 @@ htmlcov/
 *.tmp
 *.temp
 .cache/
+
+# Secrets / keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*service-account*.json
+*credentials*.json
+project-*-*.json
+
+# Local deployment helper scripts
+user-data*.sh
